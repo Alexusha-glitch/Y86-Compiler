@@ -7,7 +7,6 @@ public class Y86 {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setResizable(false);
         frame.setBackground(Color.darkGray);
-        frame.setLocationRelativeTo(null);
 
         JPanel panel = new JPanel();
         
@@ -18,6 +17,10 @@ public class Y86 {
         JLabel Y86_Code = new JLabel("Y86 Code:");
         panel.add(Y86_Code);
 
+        frame.add(panel);
+
+        frame.pack();
+        frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
 }
