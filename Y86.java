@@ -70,7 +70,7 @@ public class Y86 {
                         i = 2;
                         temp = dict.get(arr[i]) + temp;
                         out += temp; // Completes loop as it edits i value. Translates both
-                    } else if (Character.isDigit(arr[i].split("\\(")[0].charAt(0))) {
+                    } else if (Character.isDigit(arr[i].split("\\(")[0].charAt(0)) && arr[0].equals("rmmovl")) { // rmmovl
                         temp = arr[i].split("\\(")[0];
                         temp = Integer.toHexString(Integer.parseInt(temp));
                         if (temp.length() == 1) {
@@ -78,6 +78,16 @@ public class Y86 {
                         }
                         temp = dict.get(arr[i].split("\\(")[1].substring(0, 4)) + temp;
                         out += temp;
+                    } else if (arr[0].charAt(0) == 'j') { // Jumping. _ Used as an indicator to come back and replace with address
+                        out += "_" + arr[i];
+                    } else if (arr[0].equals("call")) { // Calling. _ Used as an indicator to come back and replace with address
+                        out += "_" + arr[i];
+                    } else if (arr[i].charAt(0) == '$' && arr[0].equals("irmovl")) { // irmovl
+                        temp += Integer.toHexString(Integer.parseInt(arr[i].substring(1, arr[i].length())));
+                        i = 2;
+                        temp = "f" + dict.get(arr[i]) + temp;
+                    } else {
+
                     }
                 }
             } else { // If it is an assembly directive
