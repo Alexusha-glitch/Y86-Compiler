@@ -5,7 +5,8 @@ import java.util.stream.Stream;
 import javax.swing.*;
 
 public class Y86 {
-    private static Map<String, String> map = Stream.of(new String[][] {
+    // Defines dictionary, translating from commands or registers into numbers
+    private static Map<String, String> dict = Stream.of(new String[][] {
   { "halt", "00" }, 
   { "nop", "10" }, 
   { "rrmovl", "20" }, 
@@ -43,12 +44,12 @@ public class Y86 {
   { "%edi", "7" },
 }).collect(Collectors.toMap(data -> data[0], data -> data[1]));
 
-    private static String line_translator(String line) {
+    private static String translator(String line, int current_pos) {
         String[] arr = line.split(" ");
         String out = "";
         for (String s : arr) {
             if (!(s.contains(":"))) {
-                out = out + map.get(s);
+                out = out + dict.get(s);
             }
         }
         return out;
@@ -59,18 +60,7 @@ public class Y86 {
         frame.setResizable(false);
         frame.setBackground(Color.darkGray);
 
-        System.out.println(line_translator("addl %eax %ecx"));
-
-        JPanel panel = new JPanel();
         
-        JLabel title = new JLabel("Y86 Code");
-        title.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(title);
-
-        JLabel Y86_Code = new JLabel("Y86 Code:");
-        panel.add(Y86_Code);
-
-        frame.add(panel);
 
         frame.pack();
         frame.setLocationRelativeTo(null);
