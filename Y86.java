@@ -44,12 +44,21 @@ public class Y86 {
   { "%edi", "7" },
 }).collect(Collectors.toMap(data -> data[0], data -> data[1]));
 
-    private static String translator(String line, int current_pos) {
-        String[] arr = line.split(" ");
+    private static String translator(String code) {
+        int current_pos = 0;
+        String[] lines = code.split("\n");
         String out = "";
-        for (String s : arr) {
-            if (!(s.contains(":"))) {
-                out = out + dict.get(s);
+        for (String line : lines) {
+            String[] arr = line.split(" ");
+            out += "0x" + current_pos;
+            if (dict.containsKey(arr[0])) { // If it is an operation
+
+            } else { // If it is an assembly directive
+                if (arr[0].charAt(0) == '.') {
+
+                } else { // If it is a symbolic name for point of code ("main: ___")
+
+                }
             }
         }
         return out;
@@ -60,7 +69,7 @@ public class Y86 {
         frame.setResizable(false);
         frame.setBackground(Color.darkGray);
 
-        
+
 
         frame.pack();
         frame.setLocationRelativeTo(null);
