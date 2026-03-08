@@ -144,6 +144,24 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
             }
             out += "\n";
         }
+
+        boolean done = false;
+        String name;
+        int j;
+        for (int i = 0; i < out.length(); i++) {
+            if (out.charAt(i) == '_') {
+                name = "";
+                j = i+1;
+                while (!done) {
+                    if (!Character.isDigit(out.charAt(j))) {
+                        name += out.charAt(j);
+                        j++;
+                    }
+                }
+                out = out.substring(0, i) + symbol.get(name) + out.substring(j-1, out.length());
+            }
+        }
+
         return out;
     }
     public static void main(String[] args) {
