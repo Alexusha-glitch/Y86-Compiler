@@ -60,7 +60,7 @@ public class Y86 {
                 for (int i = 1; i < arr.length; i++) {
                     if (arr[i].charAt(0) == '%') { // If it is a register
                         out += dict.get(arr[i]);
-                    } else if (operator.equals("mrmovl")) { // Odd case where registers are backwards
+                    } else if (operator.equals("mrmovl")) { // Odd case where registers are backwards, mrmovl
                         temp = arr[i].split("\\(")[0];
                         temp = Integer.toHexString(Integer.parseInt(temp));
                         if (temp.length() == 1) {
@@ -87,7 +87,7 @@ public class Y86 {
                         i = 2;
                         temp = "f" + dict.get(arr[i]) + temp;
                     } else {
-
+                        // Code here for stuff like defining Stack pointer thingies
                     }
                 }
             } else { // If it is an assembly directive
