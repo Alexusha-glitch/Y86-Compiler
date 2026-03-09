@@ -31,8 +31,8 @@ public class Y86 {
   { "jg", "76" },
   { "call", "80" },
   { "ret", "90" },
-  { "pushl", "A0" },
-  { "popl", "B0" },
+  { "pushl", "a0" },
+  { "popl", "b0" },
   { "%eax", "0" },
   { "%ecx", "1" },
   { "%edx", "2" },
@@ -96,37 +96,47 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
         String temp;
         String operator;
         int start;
+        int counter;
         for (String line : lines) {
-            String[] arr = line.split("\s*,\s*|\\s+");
-            operator = arr[0];
-            out += "0x" + Integer.toHexString(current_pos) + ": ";
-            start = 1;
-            if (operator.isEmpty()) {
+            counter = 0;
+            if (line.isEmpty()) {
                 continue;
             }
-            if (operator.charAt(0) != '.') { // If it is an operation or symbol with operation
-                operator = arr[0];
-                if (operator.charAt(operator.length()-1) == ':') {
-                    symbol.put(operator.substring(0, operator.length() - 1), current_pos);
-                    if (arr.length > 1) {
-                        operator = arr[1];
-                    } else {
-                        continue;
-                    }
-                    start = 2;
+            String[] arr = line.split("\s*,\s*|\\s+");
+            out += "0x" + Integer.toHexString(current_pos) + ": ";
+            start = 1;
+            operator = arr[counter];
+            while (operator.isEmpty()) {
+                counter++;
+                operator = arr[counter];
+            }
+            if (operator.charAt(operator.length()-1) == ':') {
+                symbol.put(operator.substring(0, operator.length() - 1), current_pos);
+                if (arr.length > counter+1) {
+                    counter++;
+                    operator = arr[counter];
+                } else {
+                    continue;
                 }
+            }
+            if (operator.charAt(0) != '.') { // If it is an operation or symbol with operation
                 out += dict.get(operator);
+                start = counter + 1;
                 for (int i = start; i < arr.length; i++) {
                     if (arr[i].charAt(0) == '%') { // If it is a register
                         out += dict.get(arr[i]);
                     } else if (operator.equals("mrmovl")) { // Odd case where registers are backwards, mrmovl
                         temp = arr[i].split("\\(")[0];
-                        temp = int_to_endian(Integer.parseInt(temp));
-                        temp = dict.get(arr[i].split("\\(")[1].substring(0, 4)) + temp;
+                        if (!temp.isEmpty()) {
+                            temp = int_to_endian(Integer.parseInt(temp));
+                            temp = dict.get(arr[i].split("\\(")[1].substring(0, 4)) + temp;
+                        } else {
+                            temp = dict.get(arr[i].split("\\(")[1].substring(0, 4)) + int_to_endian(0);
+                        }
                         i++;
                         temp = dict.get(arr[i]) + temp;
                         out += temp; // Completes loop as it edits i value. Translates both
-                    } else if (Character.isDigit(arr[i].split("\\(")[0].charAt(0)) && arr[0].equals("rmmovl")) { // rmmovl
+                    } else if (Character.isDigit(arr[i].split("\\(")[0].charAt(0)) && operator.equals("rmmovl")) { // rmmovl
                         temp = arr[i].split("\\(")[0];
                         temp = int_to_endian(Integer.parseInt(temp));
                         temp = dict.get(arr[i].split("\\(")[1].substring(0, 4)) + temp;
@@ -139,28 +149,36 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
                         out += "f" + dict.get(arr[i]) + temp;
                     } else if (operator.equals("irmovl")) { // irmovl for stuff like stacks
                         i++;
-                        out += "f" + dict.get(arr[i]) + "_" + arr[i-1];
+                        if (arr[i-1].charAt(0) != '$') {
+                            out += "f" + dict.get(arr[i]) + "_" + arr[i-1];
+                        } else {
+                            out += "f" + dict.get(arr[i]) + int_to_endian(Integer.parseInt(arr[i-1].substring(1, arr[i-1].length())));
+                        }
                     } else {
                         out += "f";
                     }
                 }
+                if (operator.equals("pushl") || operator.equals("popl")) {
+                    out += "f";
+                }
                 current_pos += Integer.parseInt(memory.get(operator));
             } else { // If it is an assembly directive
-                if (arr[0].charAt(0) == '.') {
-                    if (arr[0].contains(".pos")) {
+                if (operator.charAt(0) == '.') {
+                    if (operator.contains(".pos")) {
                         if (arr[1].length() >= 2 && arr[1].charAt(1) == 'x') {
                             current_pos = Integer.parseInt(arr[1].substring(2, arr[1].length()), 16);
                         } else {
                             current_pos = Integer.parseInt(arr[1]);
                         }
-                    } else if (arr[0].contains(".align")) {
+                    } else if (operator.contains(".align")) {
                         if (arr[1].length() >= 2 && arr[1].charAt(1) == 'x') {
                             current_pos += Integer.parseInt(arr[1].substring(2, arr[1].length()), 16) - current_pos % Integer.parseInt(arr[1].substring(2, arr[1].length()), 16);
                         } else {
                             current_pos += Integer.parseInt(arr[1]) - current_pos % Integer.parseInt(arr[1]);
                         }
                     } else {
-                        out += int_to_endian(Integer.parseInt(arr[1].substring(2, arr[1].length()), 16));
+                        out += int_to_endian(Integer.parseInt(arr[counter+1].substring(2, arr[counter+1].length()), 16));
+                        current_pos += 4;
                     }
                 }
             }
@@ -171,7 +189,6 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
         String name;
         int j;
         for (int i = 0; i < out.length(); i++) {
-            j = i;
             if (out.charAt(i) == '_') {
                 name = "";
                 j = i+1;
@@ -183,9 +200,11 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
                         done = true;
                     }
                 }
-                out = out.substring(0, i) + int_to_endian(symbol.get(name)) + out.substring(j, out.length());
+                if (!name.isEmpty()) {
+                    out = out.substring(0, i) + int_to_endian(symbol.get(name)) + out.substring(j, out.length());
+                }
+                done = false;
             }
-            i = j;
         }
 
         return out;
@@ -198,7 +217,41 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
                     irmovl Stack, %ebp
                     call Main
                     halt
+
+            .align 4
+            array:  .long 0xd
+                    .long 0xc0
+                    .long 0xb00
+                    .long 0xa000
+
             Main:   pushl %ebp
+                    rrmovl %esp, %ebp
+                    irmovl $4, %eax
+                    pushl %eax
+                    irmovl array, %edx
+                    pushl %edx
+                    call Sum
+                    rrmovl %ebp, %esp
+                    popl %ebp
+                    ret
+            Sum:    pushl %ebp
+                    rrmovl %esp, %ebp
+                    mrmovl 8(%ebp), %ecx
+                    mrmovl 12(%ebp), %edx
+                    xorl %eax, %eax
+                    andl %edx, %edx
+                    je End
+            Loop:   mrmovl (%ecx), %esi
+                    addl %esi, %eax
+                    irmovl $4, %ebx
+                    addl %ebx, %ecx
+                    irmovl $-1, %ebx
+                    addl %ebx, %edx
+                    jne Loop
+            End:    rrmovl %ebp, %esp
+                    popl %ebp
+                    ret
+
             .pos 0x100
             Stack:
             """)
