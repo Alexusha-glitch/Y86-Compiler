@@ -73,15 +73,22 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
   { "popl", "2" },
 }).collect(Collectors.toMap(data -> data[0], data -> data[1]));
 
-    private String int_to_endian(int n) {
+    private static String int_to_endian(int n) {
         String hex = Integer.toHexString(n);
-        for (int i = 0; i < 8-hex.length(); i++) {
+        int length = 8-hex.length();
+        for (int i = 0; i < length; i++) {
             hex = "0" + hex;
         }
         return hex.substring(6, 8) + hex.substring(4, 6) + hex.substring(2, 4) + hex.substring(0, 2);
     }
 
-    private String translator(String code) {
+    private static void print_arr(String[] a) {
+        for (int i = 0; i < a.length; i++) {
+            System.out.println(a[i]);
+        }
+    }
+
+    private static String translator(String code) {
         Map<String, Integer> symbol = new HashMap<>();
         int current_pos = 0;
         String[] lines = code.split("\n");
@@ -90,18 +97,25 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
         String operator;
         int start;
         for (String line : lines) {
-            String[] arr = line.split(" |,");
+            String[] arr = line.split("\s*,\s*|\\s+");
             operator = arr[0];
             out += "0x" + Integer.toHexString(current_pos) + ": ";
             start = 1;
-            if (operator.charAt(0) != '.') { // If it is an operation
+            if (operator.isEmpty()) {
+                continue;
+            }
+            if (operator.charAt(0) != '.') { // If it is an operation or symbol with operation
                 operator = arr[0];
-                out += dict.get(operator);
-                if (operator.charAt(operator.length()) == ':') {
-                    symbol.put(operator, current_pos);
-                    operator = arr[1];
+                if (operator.charAt(operator.length()-1) == ':') {
+                    symbol.put(operator.substring(0, operator.length() - 1), current_pos);
+                    if (arr.length > 1) {
+                        operator = arr[1];
+                    } else {
+                        continue;
+                    }
                     start = 2;
                 }
+                out += dict.get(operator);
                 for (int i = start; i < arr.length; i++) {
                     if (arr[i].charAt(0) == '%') { // If it is a register
                         out += dict.get(arr[i]);
@@ -134,9 +148,17 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
             } else { // If it is an assembly directive
                 if (arr[0].charAt(0) == '.') {
                     if (arr[0].contains(".pos")) {
-                        current_pos = Integer.parseInt(arr[1]);
+                        if (arr[1].length() >= 2 && arr[1].charAt(1) == 'x') {
+                            current_pos = Integer.parseInt(arr[1].substring(2, arr[1].length()), 16);
+                        } else {
+                            current_pos = Integer.parseInt(arr[1]);
+                        }
                     } else if (arr[0].contains(".align")) {
-                        current_pos += Integer.parseInt(arr[1]) - current_pos % Integer.parseInt(arr[1]);
+                        if (arr[1].length() >= 2 && arr[1].charAt(1) == 'x') {
+                            current_pos += Integer.parseInt(arr[1].substring(2, arr[1].length()), 16) - current_pos % Integer.parseInt(arr[1].substring(2, arr[1].length()), 16);
+                        } else {
+                            current_pos += Integer.parseInt(arr[1]) - current_pos % Integer.parseInt(arr[1]);
+                        }
                     } else {
                         out += int_to_endian(Integer.parseInt(arr[1].substring(2, arr[1].length()), 16));
                     }
@@ -149,22 +171,37 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
         String name;
         int j;
         for (int i = 0; i < out.length(); i++) {
+            j = i;
             if (out.charAt(i) == '_') {
                 name = "";
                 j = i+1;
                 while (!done) {
-                    if (!Character.isDigit(out.charAt(j))) {
+                    if (Character.isLetter(out.charAt(j))) {
                         name += out.charAt(j);
                         j++;
+                    } else {
+                        done = true;
                     }
                 }
-                out = out.substring(0, i) + symbol.get(name) + out.substring(j-1, out.length());
+                out = out.substring(0, i) + int_to_endian(symbol.get(name)) + out.substring(j, out.length());
             }
+            i = j;
         }
 
         return out;
     }
     public static void main(String[] args) {
-        
+        System.out.println(
+            translator("""
+            .pos 0
+            init:   irmovl Stack, %esp
+                    irmovl Stack, %ebp
+                    call Main
+                    halt
+            Main:   pushl %ebp
+            .pos 0x100
+            Stack:
+            """)
+        );
     }
 }
