@@ -4,6 +4,51 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Y86 {
+    public static final String SAMPLE_PROGRAM = """
+            .pos 0
+            init:   irmovl Stack, %esp
+                    irmovl Stack, %ebp
+                    call Main
+                    halt
+
+            .align 4
+            array:  .long 0xd
+                    .long 0xc0
+                    .long 0xb00
+                    .long 0xa000
+
+            Main:   pushl %ebp
+                    rrmovl %esp, %ebp
+                    irmovl $4, %eax
+                    pushl %eax
+                    irmovl array, %edx
+                    pushl %edx
+                    call Sum
+                    rrmovl %ebp, %esp
+                    popl %ebp
+                    ret
+            Sum:    pushl %ebp
+                    rrmovl %esp, %ebp
+                    mrmovl 8(%ebp), %ecx
+                    mrmovl 12(%ebp), %edx
+                    xorl %eax, %eax
+                    andl %edx, %edx
+                    je End
+            Loop:   mrmovl (%ecx), %esi
+                    addl %esi, %eax
+                    irmovl $4, %ebx
+                    addl %ebx, %ecx
+                    irmovl $-1, %ebx
+                    addl %ebx, %edx
+                    jne Loop
+            End:    rrmovl %ebp, %esp
+                    popl %ebp
+                    ret
+
+            .pos 0x100
+            Stack:
+            """;
+
     // Defines dictionary, translating from commands or registers into numbers
     private final static Map<String, String> dict = Stream.of(new String[][] {
   { "halt", "00" }, 
@@ -88,7 +133,7 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
         }
     }
 
-    private static String translator(String code) {
+    public static String translator(String code) {
         Map<String, Integer> symbol = new HashMap<>();
         int current_pos = 0;
         String[] lines = code.split("\n");
@@ -211,50 +256,7 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
     }
     public static void main(String[] args) {
         System.out.println(
-            translator("""
-            .pos 0
-            init:   irmovl Stack, %esp
-                    irmovl Stack, %ebp
-                    call Main
-                    halt
-
-            .align 4
-            array:  .long 0xd
-                    .long 0xc0
-                    .long 0xb00
-                    .long 0xa000
-
-            Main:   pushl %ebp
-                    rrmovl %esp, %ebp
-                    irmovl $4, %eax
-                    pushl %eax
-                    irmovl array, %edx
-                    pushl %edx
-                    call Sum
-                    rrmovl %ebp, %esp
-                    popl %ebp
-                    ret
-            Sum:    pushl %ebp
-                    rrmovl %esp, %ebp
-                    mrmovl 8(%ebp), %ecx
-                    mrmovl 12(%ebp), %edx
-                    xorl %eax, %eax
-                    andl %edx, %edx
-                    je End
-            Loop:   mrmovl (%ecx), %esi
-                    addl %esi, %eax
-                    irmovl $4, %ebx
-                    addl %ebx, %ecx
-                    irmovl $-1, %ebx
-                    addl %ebx, %edx
-                    jne Loop
-            End:    rrmovl %ebp, %esp
-                    popl %ebp
-                    ret
-
-            .pos 0x100
-            Stack:
-            """)
+            translator(SAMPLE_PROGRAM)
         );
     }
 }
