@@ -127,12 +127,6 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
         return hex.substring(6, 8) + hex.substring(4, 6) + hex.substring(2, 4) + hex.substring(0, 2);
     }
 
-    private static void print_arr(String[] a) {
-        for (int i = 0; i < a.length; i++) {
-            System.out.println(a[i]);
-        }
-    }
-
     public static String translator(String code) {
         Map<String, Integer> symbol = new HashMap<>();
         int current_pos = 0;
@@ -142,14 +136,14 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
         String operator;
         int start;
         int counter;
+        boolean newline;
         for (String line : lines) {
+            newline = false;
             counter = 0;
             if (line.isEmpty()) {
                 continue;
             }
             String[] arr = line.split("\s*,\s*|\\s+");
-            out += "0x" + Integer.toHexString(current_pos) + ": ";
-            start = 1;
             operator = arr[counter];
             while (operator.isEmpty()) {
                 counter++;
@@ -165,6 +159,8 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
                 }
             }
             if (operator.charAt(0) != '.') { // If it is an operation or symbol with operation
+                newline = true;
+                out += "0x" + Integer.toHexString(current_pos) + ": ";
                 out += dict.get(operator);
                 start = counter + 1;
                 for (int i = start; i < arr.length; i++) {
@@ -222,12 +218,16 @@ private final static Map<String, String> memory = Stream.of(new String[][] {
                             current_pos += Integer.parseInt(arr[1]) - current_pos % Integer.parseInt(arr[1]);
                         }
                     } else {
+                        newline = true;
+                        out += "0x" + Integer.toHexString(current_pos) + ": ";
                         out += int_to_endian(Integer.parseInt(arr[counter+1].substring(2, arr[counter+1].length()), 16));
                         current_pos += 4;
                     }
                 }
             }
-            out += "\n";
+            if (newline) {
+                out += "\n";
+            }
         }
 
         boolean done = false;
