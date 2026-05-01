@@ -1,5 +1,5 @@
-import javax.swing.*;
 import java.awt.*;
+import javax.swing.*;
 
 public class Y86GUI extends JFrame {
     private final JTextArea inputArea;
