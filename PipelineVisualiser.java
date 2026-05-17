@@ -1,3 +1,4 @@
+import java.awt.*;
 import javax.swing.*;
 
 public class PipelineVisualiser extends JFrame {
