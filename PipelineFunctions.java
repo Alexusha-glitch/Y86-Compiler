@@ -1,6 +1,19 @@
 import java.util.HashMap;
 
 public class PipelineFunctions {
+    public static String registersToString(HashMap<String, String> registers) {
+        String s = "";
+
+        for (int i = 0; i <= 7; i++) {
+            s += registers.get(Integer.toString(i));
+            if (i != 7) {
+                s += " ";
+            }
+        }
+
+        return s;
+    }
+    
     public static int parseHexInt(String s) {
         return (int) Long.parseLong(s.substring(2), 16);
     }
@@ -37,7 +50,8 @@ public class PipelineFunctions {
         return registers;
     }
 
-    public static String loop(String assembly) {
+    public static String[] loop(String assembly) {
+        String[] ret = new String[2];
         HashMap<String, String> registers = createRegisters();
         HashMap<String, String> instructionMemory = assemblyToMemory(assembly);
         HashMap<String, String> dataMemory = new HashMap<>();
@@ -46,12 +60,13 @@ public class PipelineFunctions {
         boolean SF = false;
         boolean OF = false;
         String output = "";
+        String registerOutput = "";
+        registerOutput += registersToString(registers) + "\n";
         String[] fetched, decoded, executed;
         String icode, ifun, rA, rB, valC, valP, valA, valB, valE, cond, valM, newPC;
         boolean oldZF, oldSF, oldOF;
         
         while(true) {
-            System.out.println(PC);
             fetched = fetch(instructionMemory, PC);
             icode = fetched[0];
             ifun = fetched[1];
@@ -101,9 +116,13 @@ public class PipelineFunctions {
             output = output + icode + " " + valP + " " + cond + " " + valC + " " + valM + " " + newPC + "\n";
 
             PC = newPC;
+            registerOutput += registersToString(registers) + "\n";
         }
+        
+        ret[0] = output;
+        ret[1] = registerOutput;
 
-        return output;
+        return ret;
     }
 
     public static String[] fetch(HashMap<String, String> memory, String PC) {
@@ -321,6 +340,7 @@ public class PipelineFunctions {
     }
 
     public static void main(String[] args) {
-        System.out.println(loop("0x0: 30f400010000 0x6: 30f500010000 0xc: 8024000000 0x11: 00 0x14: 0d000000 0x18: c0000000 0x1c: 000b0000 0x20: 00a00000 0x24: a05f 0x26: 2045 0x28: 30f004000000 0x2e: a00f 0x30: 30f214000000 0x36: a02f 0x38: 8042000000 0x3d: 2054 0x3f: b05f 0x41: 90 0x42: a05f 0x44: 2045 0x46: 501508000000 0x4c: 50250c000000 0x52: 6300 0x54: 6222 0x56: 7378000000 0x5b: 506100000000 0x61: 6060 0x63: 30f304000000 0x69: 6031 0x6b: 30f3ffffffff 0x71: 6032 0x73: 745b000000 0x78: 2054 0x7a: b05f 0x7c: 90"));
+        int i = 1;
+        System.out.println(loop("0x0: 30f400010000 0x6: 30f500010000 0xc: 8024000000 0x11: 00 0x14: 0d000000 0x18: c0000000 0x1c: 000b0000 0x20: 00a00000 0x24: a05f 0x26: 2045 0x28: 30f004000000 0x2e: a00f 0x30: 30f214000000 0x36: a02f 0x38: 8042000000 0x3d: 2054 0x3f: b05f 0x41: 90 0x42: a05f 0x44: 2045 0x46: 501508000000 0x4c: 50250c000000 0x52: 6300 0x54: 6222 0x56: 7378000000 0x5b: 506100000000 0x61: 6060 0x63: 30f304000000 0x69: 6031 0x6b: 30f3ffffffff 0x71: 6032 0x73: 745b000000 0x78: 2054 0x7a: b05f 0x7c: 90")[i]);
     }
 }
