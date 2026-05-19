@@ -1,6 +1,18 @@
 import java.util.HashMap;
 
 public class PipelineFunctions {
+    public static int parseHexInt(String s) {
+        return (int) Long.parseLong(s.substring(2), 16);
+    }
+
+    public static String littleEndianToHex(String s) {
+        String ret = "";
+        for (int i = s.length(); i > 0; i -= 2) {
+            ret += s.substring(i-2, i);
+        }
+        return "0x" + Long.toHexString(Long.parseLong(ret, 16));
+    }
+
     public static HashMap<String, String> assemblyToMemory(String assembly) {
         HashMap<String, String> memory = new HashMap<>();
         String[] assemblyArr = assembly.split("\n| ");
@@ -33,6 +45,65 @@ public class PipelineFunctions {
         boolean ZF = false;
         boolean SF = false;
         boolean OF = false;
+        String output = "";
+        String[] fetched, decoded, executed;
+        String icode, ifun, rA, rB, valC, valP, valA, valB, valE, cond, valM, newPC;
+        boolean oldZF, oldSF, oldOF;
+        
+        while(true) {
+            System.out.println(PC);
+            fetched = fetch(instructionMemory, PC);
+            icode = fetched[0];
+            ifun = fetched[1];
+            rA = fetched[2];
+            rB = fetched[3];
+            valC = fetched[4];
+            valP = fetched[5];
+
+            output = output + PC + " " + icode + " " + ifun + " " + rA + " " + rB + " " + valC + " " + valP + "\n";
+
+            if (icode.equals("0")) {
+                break;
+            }
+
+            decoded = decode(icode, rA, rB, registers);
+
+            valA = decoded[0];
+            valB = decoded[1];
+
+            output = output + icode + " " + rA + " " + rB + " " + valA + " " + valB + "\n";
+
+            oldZF = ZF;
+            oldSF = SF;
+            oldOF = OF;
+
+            executed = execute(icode, ifun, valA, valB, valC, ZF, SF, OF);
+
+            valE = executed[0];
+            cond = executed[1];
+
+            ZF = executed[2].equals("1");
+            SF = executed[3].equals("1");
+            OF = executed[4].equals("1");
+
+            output = output + icode + " " + ifun + " " + valA + " " + valB + " " + valC + " " + (oldZF ? "1" : "0") + " " + (oldSF ? "1" : "0") + " " + (oldOF ? "1" : "0") + " " + valE + " " + cond + " " + executed[2] + " " + executed[3] + " " + executed[4] + "\n";
+
+            valM = memory(icode, valA, valE, valP, dataMemory);
+
+            output = output + icode + " " + valA + " " + valE + " " + valP + " " + valM + "\n";
+
+            writeBack(icode, rA, rB, valE, valM, cond, registers);
+
+            output = output + icode + " " + rA + " " + rB + " " + valE + " " + valM + " " + cond + "\n";
+
+            newPC = PC(icode, valP, cond, valC, valM);
+
+            output = output + icode + " " + valP + " " + cond + " " + valC + " " + valM + " " + newPC + "\n";
+
+            PC = newPC;
+        }
+
+        return output;
     }
 
     public static String[] fetch(HashMap<String, String> memory, String PC) {
@@ -46,7 +117,7 @@ public class PipelineFunctions {
             if (line != null) {
                 done = true;
             } else {
-                PC = "0x" + Integer.toHexString(Integer.decode(PC) + 1);
+                PC = "0x" + Integer.toHexString(parseHexInt(PC) + 1);
             }
         }
         
@@ -62,14 +133,14 @@ public class PipelineFunctions {
         }
 
         if (ret[0].equals("3") || ret[0].equals("4") || ret[0].equals("5")) {
-            ret[4] = line.substring(4);
+            ret[4] = littleEndianToHex(line.substring(4));
         } else if (ret[0].equals("7") || ret[0].equals("8")) {
-            ret[4] = line.substring(2);
+            ret[4] = littleEndianToHex(line.substring(2));
         } else {
-            ret[4] = "0";
+            ret[4] = "0x0";
         }
 
-        ret[5] = "0x" + Integer.toHexString(Integer.decode(PC) + line.length()/2);
+        ret[5] = "0x" + Integer.toHexString(parseHexInt(PC) + line.length()/2);
 
         return ret;
     }
@@ -125,23 +196,23 @@ public class PipelineFunctions {
         } else if (icode.equals("3")) {
             valE = valC;
         } else if (icode.equals("4") || icode.equals("5")) {
-            valE = "0x" + Integer.toHexString(Integer.decode(valB) + Integer.decode(valC));
+            valE = "0x" + Integer.toHexString(parseHexInt(valB) + parseHexInt(valC));
         } else if (icode.equals("6")) {
             if (ifun.equals("0")) {
-                valE = "0x" + Integer.toHexString(Integer.decode(valB) + Integer.decode(valA));
-                OF = ((Integer.decode(valA) < 0) == (Integer.decode(valB) < 0)) && ((Integer.decode(valE) < 0) != (Integer.decode(valA) < 0));
+                valE = "0x" + Integer.toHexString(parseHexInt(valB) + parseHexInt(valA));
+                OF = ((parseHexInt(valA) < 0) == (parseHexInt(valB) < 0)) && ((parseHexInt(valE) < 0) != (parseHexInt(valA) < 0));
             } else if (ifun.equals("1")) {
-                valE = "0x" + Integer.toHexString(Integer.decode(valB) - Integer.decode(valA));
-                OF = ((Integer.decode(valA) < 0) != (Integer.decode(valB) < 0)) && ((Integer.decode(valE) < 0) != (Integer.decode(valB) < 0));
+                valE = "0x" + Integer.toHexString(parseHexInt(valB) - parseHexInt(valA));
+                OF = ((parseHexInt(valA) < 0) != (parseHexInt(valB) < 0)) && ((parseHexInt(valE) < 0) != (parseHexInt(valB) < 0));
             } else if (ifun.equals("2")) {
-                valE = "0x" + Integer.toHexString(Integer.decode(valB) & Integer.decode(valA));
+                valE = "0x" + Integer.toHexString(parseHexInt(valB) & parseHexInt(valA));
                 OF = false;
             } else if (ifun.equals("3")) {
-                valE = "0x" + Integer.toHexString(Integer.decode(valB) ^ Integer.decode(valA));
+                valE = "0x" + Integer.toHexString(parseHexInt(valB) ^ parseHexInt(valA));
                 OF = false;
             }
-            ZF = Integer.decode(valE) == 0;
-            SF = Integer.decode(valE) < 0;
+            ZF = parseHexInt(valE) == 0;
+            SF = parseHexInt(valE) < 0;
         } else if (icode.equals("7")) {
             valE = valC;
             if (ifun.equals("0")) {
@@ -160,13 +231,13 @@ public class PipelineFunctions {
                 cond = !(SF^OF) && !ZF;
             }
         } else if (icode.equals("8")) {
-            valE = "0x" + Integer.toHexString(Integer.decode(valB) - 4);
+            valE = "0x" + Integer.toHexString(parseHexInt(valB) - 4);
         } else if (icode.equals("9")) {
-            valE = "0x" + Integer.toHexString(Integer.decode(valB) + 4);
+            valE = "0x" + Integer.toHexString(parseHexInt(valB) + 4);
         } else if (icode.equals("a")) {
-            valE = "0x" + Integer.toHexString(Integer.decode(valB) - 4);
+            valE = "0x" + Integer.toHexString(parseHexInt(valB) - 4);
         } else if (icode.equals("b")) {
-            valE = "0x" + Integer.toHexString(Integer.decode(valB) + 4);
+            valE = "0x" + Integer.toHexString(parseHexInt(valB) + 4);
         }
 
         ret[0] = valE;
@@ -222,7 +293,7 @@ public class PipelineFunctions {
         } else if (icode.equals("3")) {
             registers.put(rB, valE);
         } else if (icode.equals("5")) {
-            registers.put(rB, valM);
+            registers.put(rA, valM);
         } else if (icode.equals("6")) {
             registers.put(rB, valE);
         } else if (icode.equals("8")) {
@@ -250,6 +321,6 @@ public class PipelineFunctions {
     }
 
     public static void main(String[] args) {
-        
+        System.out.println(loop("0x0: 30f400010000 0x6: 30f500010000 0xc: 8024000000 0x11: 00 0x14: 0d000000 0x18: c0000000 0x1c: 000b0000 0x20: 00a00000 0x24: a05f 0x26: 2045 0x28: 30f004000000 0x2e: a00f 0x30: 30f214000000 0x36: a02f 0x38: 8042000000 0x3d: 2054 0x3f: b05f 0x41: 90 0x42: a05f 0x44: 2045 0x46: 501508000000 0x4c: 50250c000000 0x52: 6300 0x54: 6222 0x56: 7378000000 0x5b: 506100000000 0x61: 6060 0x63: 30f304000000 0x69: 6031 0x6b: 30f3ffffffff 0x71: 6032 0x73: 745b000000 0x78: 2054 0x7a: b05f 0x7c: 90"));
     }
 }
