@@ -28,7 +28,10 @@ public class PipelineFunctions {
     public static String loop(String assembly) {
         HashMap<String, String> registers = createRegisters();
         HashMap<String, String> memory = assemblyToMemory(assembly);
-        String PC = "0x0";
+        int PC = 0;
+        int ZF = 0;
+        int SF = 0;
+        int OF = 0;
     }
 
     public static String[] fetch(HashMap<String, String> memory, String PC) {
@@ -37,10 +40,11 @@ public class PipelineFunctions {
         String line = "";
         
         while (!done) {
-            try {
-                line = memory.get(PC);
+            line = memory.get(PC);
+
+            if (line != null) {
                 done = true;
-            } catch (Exception e) {
+            } else {
                 PC = Integer.toHexString(Integer.decode(PC) + 1);
             }
         }
@@ -56,9 +60,9 @@ public class PipelineFunctions {
             ret[3] = line.substring(3, 4);
         }
 
-        if (ret[0].equals(3) || ret[0].equals(4) || ret[0].equals(5)) {
+        if (ret[0].equals("3") || ret[0].equals("4") || ret[0].equals("5")) {
             ret[4] = line.substring(4);
-        } else if (ret[0].equals(7) || ret[0].equals(8)) {
+        } else if (ret[0].equals("7") || ret[0].equals("8")) {
             ret[4] = line.substring(2);
         } else {
             ret[4] = "0";
@@ -87,10 +91,53 @@ public class PipelineFunctions {
         return ret;
     }
 
-    public static int[] execute(int ifun, int valA, int valB) {
-        int[] ret = new int[3];
+    public static String[] execute(String icode, String ifun, String valA, String valB, String valC) {
+        String[] ret = new String[2];
 
-        
+        String valE = "0x0";
+        boolean cond = false;
+
+        if (icode.equals("2")) {
+            valE = valA;
+        } else if (icode.equals("3")) {
+            valE = valC;
+        } else if (icode.equals("4") || icode.equals("5")) {
+            valE = Integer.toHexString(Integer.decode(valB) + Integer.decode(valC));
+        } else if (icode.equals("6")) {
+            valE = Integer.toHexString(Integer.decode(valA) + Integer.decode(valB));
+        } else if (icode.equals("7")) {
+            valE = valC;
+            if (ifun.equals("0")) {
+                cond = true;
+            } else if (ifun.equals("1")) {
+                cond = (Integer.decode(valA) <= Integer.decode(valB));
+            } else if (ifun.equals("2")) {
+                cond = (Integer.decode(valA) < Integer.decode(valB));
+            } else if (ifun.equals("3")) {
+                cond = (Integer.decode(valA) == Integer.decode(valB));
+            } else if (ifun.equals("4")) {
+                cond = (Integer.decode(valA) != Integer.decode(valB));
+            } else if (ifun.equals("5")) {
+                cond = (Integer.decode(valA) >= Integer.decode(valB));
+            } else if (ifun.equals("6")) {
+                cond = (Integer.decode(valA) > Integer.decode(valB));
+            }
+        } else if (icode.equals("8")) {
+            valE = Integer.toHexString(Integer.decode(valB) - 4);
+        } else if (icode.equals("9")) {
+            valE = Integer.toHexString(Integer.decode(valB) + 4);
+        } else if (icode.equals("a")) {
+            valE = Integer.toHexString(Integer.decode(valB) - 4);
+        } else if (icode.equals("b")) {
+            valE = Integer.toHexString(Integer.decode(valB) + 4);
+        }
+
+        ret[0] = valE;
+        if (cond) {
+            ret[1] = "1";
+        } else {
+            ret[1] = "0";
+        }
 
         return ret;
     }
@@ -111,12 +158,12 @@ public class PipelineFunctions {
         return ret;
     }
 
-    public static int PC(int valP, int CC, int valC) {
-        int ret = 0;
-
-        
-
-        return ret;
+    public static String PC(String valP, String cond, String valC) {
+        if (cond.equals("0")) {
+            return valC;
+        } else {
+            return valP;
+        }
     }
 
     public static void main(String[] args) {
